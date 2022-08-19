@@ -1,26 +1,55 @@
-import React from 'react';
-import logo from './logo.svg';
-import './App.css';
+import axios from 'axios'
+import { PokemonCollection } from 'components'
+import { Detail, Pokemon, PokemonList } from 'models'
+import { useEffect, useState } from 'react'
+import './App.css'
 
-function App() {
+const App: React.FC = () => {
+  const [pokemonList, setPokemonList] = useState<Pokemon[]>([])
+  const [nextURL, setNextURL] = useState<string>('')
+  const [loading, setLoading] = useState<boolean>(false)
+  const [viewDetail, setViewDetail] = useState<Detail>({
+    id: 0,
+    isOpened: false
+  })
+
+  useEffect(() => {
+    const getPokemonList = async () => {
+      const res = await axios.get('https://pokeapi.co/api/v2/pokemon?offset=20&limit=20')
+      setNextURL(res.data.next)
+
+      res.data.results.forEach(async (pokemon: PokemonList) => {
+        const poke = await axios.get(`https://pokeapi.co/api/v2/pokemon/${pokemon.name}`)
+        setPokemonList((prev) => [...prev, poke.data])
+        setLoading(false)
+      })
+    }
+    getPokemonList()
+  }, [])
+
+  const handleLoadMore = async () => {
+    const res = await axios.get(nextURL)
+
+    setNextURL(res.data.next)
+    res.data.results.forEach(async (pokemon: PokemonList) => {
+      const poke = await axios.get(`https://pokeapi.co/api/v2/pokemon/${pokemon.name}`)
+      setPokemonList((prev) => [...prev, poke.data])
+      setLoading(false)
+    })
+  }
   return (
     <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.tsx</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
+      <div className="container">
+        <header className="pokemon-header">Pokemon</header>
+        <PokemonCollection pokemonList={pokemonList} viewDetail={viewDetail} setViewDetail={setViewDetail} />
+        {!viewDetail.isOpened && (
+          <div className="btn">
+            <button onClick={handleLoadMore}>{loading ? 'Loading...' : 'Load more'}</button>
+          </div>
+        )}
+      </div>
     </div>
-  );
+  )
 }
 
-export default App;
+export default App
